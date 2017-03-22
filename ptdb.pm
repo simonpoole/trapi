@@ -25,7 +25,7 @@ our %tagsversion;
 sub ptdbinit($) {
     our ($mode) = @_;
     open NODES, $mode, DBDIR."nodes.db"
-	or die "Could not open nodes.db: $!";
+	or die "Could not open ".DBDIR."nodes.db, mode $mode : $!";
     open WAYS, $mode, DBDIR."ways.db"
 	or die "Could not open ways.db: $!";
     open RELATIONS, $mode, DBDIR."relations.db"
@@ -849,7 +849,7 @@ sub printmemb($$) {
     my $tagsver = tv_check($f);
     my $h = $tagsver ? $comtags[$tagsver]->[ROLE]->[0] : undef;
     while (my $m = shift @members) {
-	print $f pack("CN", $m->[0], $m->[1]);
+	print $f pack("Cq", $m->[0], $m->[1]);
 	my $role = $m->[2];
 	if ($tagsver) {
 	    if (exists $h->{$role}) {
@@ -873,8 +873,8 @@ sub readmemb($) {
     while (defined($b = getc($f))) {
 	my ($type) = unpack "C", $b;
 	last unless($type);
-	last unless(read $f, $b, 4);
-	my ($id) = unpack "N", $b;
+	last unless(read $f, $b, 8);
+	my ($id) = unpack "q", $b;
 	my $r = $tagsver ? getvnum($f) : 0;
 	if ($r) {
 	    $role = $a->[$r];
@@ -889,22 +889,22 @@ sub readmemb($) {
 sub readnode($) {
     my ($f) = @_;
     my $b;
-    read $f, $b, 16 or return undef;
-    return unpack "NN!N!N", $b;
+    read $f, $b, 24 or return undef;
+    return unpack "qN!N!q", $b;
 }
 
 sub readway($) {
     my ($f) = @_;
     my $b;
-    read $f, $b, 8 or return undef;
-    return unpack "NN", $b;
+    read $f, $b, 16 or return undef;
+    return unpack "qq", $b;
 }
 
 sub readrel($) {
     my ($f) = @_;
     my $b;
-    read $f, $b, 8 or return undef;
-    return unpack "NN", $b;
+    read $f, $b, 16 or return undef;
+    return unpack "qq", $b;
 }
 
 sub readwaynodes($) {
@@ -913,12 +913,12 @@ sub readwaynodes($) {
     if (tv_check($f)) {
 	my $nodes = getvnum($f) // 0;
 	print "reading $nodes nodes\n" if (VERBOSE > 99);
-	read $f, $b, (4 * $nodes);
-	return unpack("N$nodes", $b);
+	read $f, $b, (8 * $nodes);
+	return unpack("q$nodes", $b);
     } else {
 	my @nodes;
-	while (read $f, $b, 4) {
-	    my $n = unpack "N", $b;
+	while (read $f, $b, 8) {
+	    my $n = unpack "q", $b;
 	    last unless ($n);
 	    push @nodes, $n;
 	}
@@ -928,17 +928,17 @@ sub readwaynodes($) {
 
 sub printnode($$$$$) {
     my ($f, $id, $lat, $lon, $off) = @_;
-    print $f pack "NN!N!N", $id, $lat, $lon, $off;
+    print $f pack "qN!N!q", $id, $lat, $lon, $off;
 }
 
 sub printway($$$) {
     my ($f, $id, $off) = @_;
-    print $f pack "NN", $id, $off;
+    print $f pack "qq", $id, $off;
 }
 
 sub printrel($$$) {
     my ($f, $id, $off) = @_;
-    print $f pack "NN", $id, $off;
+    print $f pack "qq", $id, $off;
 }
 
 sub printwaynodes($$) {
@@ -947,9 +947,9 @@ sub printwaynodes($$) {
     print "saving $nodes nodes\n" if (VERBOSE > 99);
     if (tv_check($f)) {
 	printvnum($f, $nodes);
-	print $f pack "N$nodes", @$n;
+	print $f pack "q$nodes", @$n;
     } else {
-	print $f pack "N$nodes", @$n;
+	print $f pack "q$nodes", @$n;
 	print $f PZ;
     }
     print " tags at ".tell($f)."\n" if (VERBOSE > 99);
