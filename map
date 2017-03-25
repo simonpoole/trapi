@@ -35,7 +35,7 @@ while (my $query = new CGI::Fast) {
 	ptdbinit("<");
 	$oldstamp = $stamp;
     }
-    if (($stamptime + TOOLD) < time) {
+    if (not IGNORETIMESTAMP and ($stamptime + TOOLD) < time) {
 	print $query->header(-status=>('503 stale database '.$stamp));
 	last if ($die);
 	next;
